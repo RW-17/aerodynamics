@@ -1,12 +1,11 @@
-close all; clc;
-format long
+close all; clc; format long
 
-foil = '4412';
+foil = '5312';
 P = 160;
-N = P + 1;
+alpha = 0;
 
-[nodes, x, z_c] = nodes_ini(foil, N, 2);
-[Cl, Cp, pos_c] = coefs(nodes, alpha);
+[nodes, x, z_c] = nodes_ini(foil, P+1, 3);
+[Cl, Cp, pos_c, Cmba, cli] = coefs(nodes, alpha);
 
 % Airfoil plot with points, panels and control points
 figure
@@ -17,6 +16,14 @@ hold on
 plot(x, z_c, '-')
 hold off
 axis equal
+
+Cp_plot = zeros(P+1, 1); 
+Cp_plot(1:P) = Cp; 
+Cp_plot(P+1) = Cp(1);
+
+figure (2)
+plot(x, Cp_plot, '-', 'LineWidth', 0.8)
+set(gca, 'YDir','reverse')
 
 %% Function that creates the airfoil
 function [nodes, x, z_c] = nodes_ini(foil, N, opt)
@@ -74,34 +81,20 @@ end
 end
 
 %% Function that determines the lift coefficient
-function [Cl, Cp, pos_c] = coefs(nodes, alpha)
+function [Cl, Cp, pos_c, Cmba, cli] = coefs(nodes, alpha)
 
 alpha = deg2rad(alpha);
 P = size(nodes, 1) - 1;
 
 lp = zeros(P, 1);
 pos_c = zeros(P, 2);
-
 theta = zeros(P, 1);
-xp = zeros(P);
-zp = zeros(P);
 
-beta = zeros(P);
-a5 = zeros(P);  a3 = zeros(P);
-a6 = zeros(P);  a4 = zeros(P);
-a7 = zeros(P);  a9 = zeros(P);
-a8 = zeros(P); a10 = zeros(P);
-
-B = zeros(P, P+1);
-C = zeros(P, P+1);
+[xp, zp, beta, a3, a4, a5, a6, a7, a8, a9, a10] = deal(zeros(P));
+[B, C] = deal(zeros(P, P+1));
 A = zeros(P+1);
 b = zeros(P+1, 1);
-cli = zeros(P ,1);
-vtg = zeros(P, 1);
-Cp = zeros(P, 1);
-delta = zeros(P, 1);
-d = zeros(P, 1);
-cmbai = zeros(P, 1);
+[cli, vtg, Cp, delta, d, cmbai] = deal(zeros(P, 1));
 
 for i = 1:P
     lp(i) = sqrt((nodes(i+1, 1) - nodes(i, 1))^2 + ...
@@ -119,7 +112,7 @@ for i = 1:P
 
         zp(i,j) = (pos_c(i, 2) - nodes(j, 2))*cos(theta(j))...
                 - (pos_c(i, 1) - nodes(j, 1))*sin(theta(j));
-
+        
         beta(i,j) = atan2(zp(i,j), xp(i,j) - lp(j)) ...
                                     - atan2(zp(i,j), xp(i,j));
         beta(i, i) = pi;
@@ -151,7 +144,6 @@ for i = 1:P
         a10(i,j) = a3(i,j)*sin(theta(j)) + a4(i,j)*cos(theta(j));
     end
 end
-% a7(1,1) = 0;
 
 for i = 1:P
     for j = 1:P
@@ -170,8 +162,7 @@ for i = 1:P
     b(i) = -sin(alpha - theta(i));
 end
 
-A(P+1, 1) = 1;
-A(P+1, P+1) = 1;
+A(P+1, 1) = 1; A(P+1, P+1) = 1;
 b(P+1) = 0;
 
 gamma = A\b;
